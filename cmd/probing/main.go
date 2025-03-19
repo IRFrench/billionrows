@@ -31,12 +31,21 @@ var (
 	// Values we wanna probe
 	maxValue = 0.0
 	minValue = 100.0
-	sum      = 0
-	records  = 0
-	scans    = 0
+
+	maxDecimalPlaces = 0
+
+	sum     = 0
+	records = 0
+	scans   = 0
 
 	longestName  = 0
 	shortestName = 100
+
+	maxScanSize = 0
+	minScanSize = 10000000
+
+	firstStation = ""
+	lastStation  = ""
 )
 
 func runService() error {
@@ -69,7 +78,16 @@ func runService() error {
 	scanStart := time.Now()
 	for scanner.Scan() {
 
-		shittyDataParser(scanner.Bytes())
+		scannedBytes := scanner.Bytes()
+
+		if len(scannedBytes) > maxScanSize {
+			maxScanSize = len(scannedBytes)
+		}
+		if len(scannedBytes) < minScanSize {
+			minScanSize = len(scannedBytes)
+		}
+
+		shittyDataParser(scannedBytes)
 
 		scanEnd := time.Now()
 		scans += 1
@@ -87,6 +105,8 @@ func runService() error {
 	fmt.Println("\n\n###################### RESULTS ###########################\n\n")
 
 	fmt.Println("=== Station ===")
+	fmt.Printf("First station: %v\n", firstStation)
+	fmt.Printf("Last station: %v\n", lastStation)
 	fmt.Printf("Longest Station Name in Bytes: %v\n", longestName)
 	fmt.Printf("Shortest Station Name in Bytes: %v\n", shortestName)
 
@@ -95,6 +115,7 @@ func runService() error {
 	fmt.Println("=== Value ===")
 	fmt.Printf("Max Value: %v\n", maxValue)
 	fmt.Printf("Min Value: %v\n", minValue)
+	fmt.Printf("Max Decimal Places: %v\n", maxDecimalPlaces)
 	fmt.Printf("Sum of Values: %v\n", sum)
 	fmt.Printf("Avg of Values: %v\n", sum/records)
 
@@ -105,6 +126,8 @@ func runService() error {
 	fmt.Printf("Records Read: %v\n", records)
 	fmt.Printf("Records Per Scan: %v\n", records/scans)
 	fmt.Printf("Time Taken: %v\n", endTime.Sub(startTime))
+	fmt.Printf("Max scan size: %v\n", maxScanSize)
+	fmt.Printf("Min scan size: %v\n", minScanSize)
 
 	return nil
 }
@@ -138,6 +161,10 @@ func shittyBtoF(input []byte) float64 {
 		}
 	}
 
+	if len(input[indexLocation+1:]) > maxDecimalPlaces {
+		maxDecimalPlaces = len(input[indexLocation+1:])
+	}
+
 	input = slices.Delete(input, indexLocation, indexLocation+1)
 	indexLocation -= 1
 
@@ -149,12 +176,6 @@ func shittyBtoF(input []byte) float64 {
 }
 
 func shittyScannerFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	for i := len(data) - 1; i > 0; i-- {
-		if data[i] == '\n' {
-			return i + 1, data[:i], nil
-		}
-	}
-
 	if atEOF {
 		if len(data) == 0 {
 			data = nil
@@ -162,16 +183,28 @@ func shittyScannerFunc(data []byte, atEOF bool) (advance int, token []byte, err 
 		return len(data), data, nil
 	}
 
+	for i := len(data) - 1; i > 0; i-- {
+		if data[i] == '\n' {
+			return i + 1, data[:i], nil
+		}
+	}
+
 	return 0, nil, nil
 }
+
+var (
+	first = true
+)
 
 // Updates stuff directly
 func shittyDataParser(data []byte) {
 	for {
 		index := bytes.IndexByte(data, '\n')
+
 		if index < 0 {
-			break
+			index = len(data) - 1
 		}
+
 		currentLine := data[:index]
 		sepIndex := bytes.IndexByte(currentLine, ';')
 
@@ -182,6 +215,12 @@ func shittyDataParser(data []byte) {
 		if len(currentLine[:sepIndex]) < shortestName {
 			shortestName = len(currentLine[:sepIndex])
 		}
+
+		if first {
+			firstStation = string(currentLine[:sepIndex])
+			first = false
+		}
+		lastStation = string(currentLine[:sepIndex])
 
 		// Check Value
 		floatValue := shittyBtoF(currentLine[sepIndex+1:])
@@ -196,6 +235,10 @@ func shittyDataParser(data []byte) {
 		// This is probs accurate enough, Its just probing the data it will be fine
 		sum += int(floatValue)
 		records++
+
+		if index == len(data)-1 {
+			break
+		}
 
 		data = data[index+1:]
 	}
