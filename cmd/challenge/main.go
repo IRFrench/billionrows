@@ -1,9 +1,10 @@
 package main
 
 import (
-	"flag"
+	"attempt/attempt1"
 	"fmt"
 	"os"
+	"time"
 )
 
 func main() {
@@ -14,20 +15,15 @@ func main() {
 	os.Exit(0)
 }
 
-func getFlags() int {
-	attemptNumber := flag.Int("-a", 1, "Attempt Number")
-
-	flag.Parse()
-
-	return *attemptNumber
-}
-
 func runService() error {
-	// get attempt number
-	attempt := getFlags()
+	startTime := time.Now()
 
-	if attempt == 1 {
+	// Attempt here
+	attempt1.Challenge()
 
-	}
+	endTime := time.Now()
+
+	fmt.Printf("\n\nTime Taken: %v\n", endTime.Sub(startTime))
+
 	return nil
 }

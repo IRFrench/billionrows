@@ -5,3 +5,12 @@ help: ## Show commands of the makefile (and any included files)
 
 probe: ## Run the probe test to get metadata about the file
 	CGOENABLED=0 go run cmd/probing/main.go
+
+run: ## Run the attempt
+	CGOENABLED=0 go run cmd/challenge/main.go
+
+test: ## Run the tests!
+	CGOENABLED=0 go test ./attempt1/... -v -cover
+
+benchmark: ## Run the benchmarks!
+	CGOENABLED=0 go test -bench=. ./attempt1 -benchmem

@@ -78,3 +78,9 @@ Time Taken: 2m17.336217403s
 Max scan size: 9999999
 Min scan size: 3734616
 ```
+
+```
+Time Taken: 1m35.564077276s
+
+"Merzifon=100.0/NaN/0.0"
+```
